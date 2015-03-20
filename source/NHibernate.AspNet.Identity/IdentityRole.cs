@@ -6,7 +6,7 @@ using NHibernate.Mapping.ByCode.Conformist;
 
 namespace NHibernate.AspNet.Identity
 {
-    public class IdentityRole : EntityWithTypedId<string>, IRole
+    public class IdentityRole<TKey> : EntityWithTypedId<TKey>, IRole<TKey>
     {
         public virtual string Name { get; set; }
 
@@ -21,6 +21,17 @@ namespace NHibernate.AspNet.Identity
         {
             this.Name = roleName;
         }
+    }
+
+    public class IdentityRole : IdentityRole<string>, IRole
+    {
+        public IdentityRole()
+            : base()
+        { }
+
+        public IdentityRole(string roleName)
+            : base(roleName)
+        { }
     }
 
     public class IdentityRoleMap : ClassMapping<IdentityRole> 

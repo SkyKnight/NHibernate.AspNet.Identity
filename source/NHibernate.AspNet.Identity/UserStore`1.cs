@@ -15,7 +15,24 @@ namespace NHibernate.AspNet.Identity
     /// Implements IUserStore using NHibernate where TUser is the entity type of the user being stored
     /// </summary>
     /// <typeparam name="TUser"/>
-    public class UserStore<TUser> : IUserLoginStore<TUser>, IUserClaimStore<TUser>, IUserRoleStore<TUser>, IUserPasswordStore<TUser>, IUserSecurityStampStore<TUser>, IQueryableUserStore<TUser>, IUserStore<TUser>, IUserLockoutStore<TUser, string>, IUserEmailStore<TUser>, IUserPhoneNumberStore<TUser>, IUserTwoFactorStore<TUser, string>, IDisposable where TUser : IdentityUser
+    public class UserStore<TUser, TRole, TKey, TUserLogin, TUserClaim> :
+        IUserLoginStore<TUser, TKey>, 
+        IUserClaimStore<TUser, TKey>,
+        IUserRoleStore<TUser, TKey>,
+        IUserPasswordStore<TUser, TKey>,
+        IUserSecurityStampStore<TUser, TKey>,
+        IQueryableUserStore<TUser, TKey>, 
+        IUserStore<TUser, TKey>,
+        IUserLockoutStore<TUser, TKey>, 
+        IUserEmailStore<TUser, TKey>,
+        IUserPhoneNumberStore<TUser, TKey>,
+        IUserTwoFactorStore<TUser, TKey>,
+        IDisposable
+        where TKey : IEquatable<TKey>
+        where TUser : IdentityUser<TKey, TUserLogin, TRole, TUserClaim>
+        where TRole : IdentityRole<TKey>
+        where TUserLogin : IdentityUserLogin<TKey>, new()
+        where TUserClaim : IdentityUserClaim<TKey>, new()
     {
         private bool _disposed;
 
@@ -37,11 +54,17 @@ namespace NHibernate.AspNet.Identity
             this.Context = context;
         }
 
-        public virtual Task<TUser> FindByIdAsync(string userId)
+        public virtual Task<TUser> FindByIdAsync(TKey userId)
         {
             this.ThrowIfDisposed();
             //return Task.FromResult(this.Context.Get<TUser>((object)userId));
-            return this.GetUserAggregateAsync((TUser u) => u.Id.Equals(userId));
+            // http://stackoverflow.com/questions/15906483/generic-parameter-in-nhibernate-linq-query
+            var parameter = Expression.Parameter(typeof(TUser));
+            var predicate = Expression.Lambda<Func<TUser, bool>>(
+                Expression.Equal(Expression.Property(parameter, "Id"),
+                                 Expression.Constant(userId)),
+                parameter);
+            return this.GetUserAggregateAsync(predicate);
         }
 
         public virtual Task<TUser> FindByNameAsync(string userName)
@@ -144,7 +167,7 @@ namespace NHibernate.AspNet.Identity
                 throw new ArgumentNullException("login");
             }
 
-            user.Logins.Add(new IdentityUserLogin()
+            user.Logins.Add(new TUserLogin()
             {
                 ProviderKey = login.ProviderKey,
                 LoginProvider = login.LoginProvider
@@ -222,9 +245,9 @@ namespace NHibernate.AspNet.Identity
                 throw new ArgumentNullException("claim");
             }
 
-            user.Claims.Add(new IdentityUserClaim()
+            user.Claims.Add(new TUserClaim()
             {
-                User = user,
+                UserId = user.Id,
                 ClaimType = claim.Type,
                 ClaimValue = claim.Value
             });
@@ -244,7 +267,7 @@ namespace NHibernate.AspNet.Identity
                 throw new ArgumentNullException("claim");
             }
 
-            foreach (IdentityUserClaim identityUserClaim in Enumerable.ToList<IdentityUserClaim>(Enumerable.Where<IdentityUserClaim>((IEnumerable<IdentityUserClaim>)user.Claims, (Func<IdentityUserClaim, bool>)(uc =>
+            foreach (TUserClaim identityUserClaim in Enumerable.ToList<TUserClaim>(Enumerable.Where<TUserClaim>((IEnumerable<TUserClaim>)user.Claims, (Func<TUserClaim, bool>)(uc =>
             {
                 if (uc.ClaimValue == claim.Value)
                 {
@@ -274,7 +297,7 @@ namespace NHibernate.AspNet.Identity
                 throw new ArgumentException(Resources.ValueCannotBeNullOrEmpty, "role");
             }
 
-            IdentityRole identityRole = Queryable.SingleOrDefault<IdentityRole>(this.Context.Query<IdentityRole>(), (Expression<Func<IdentityRole, bool>>)(r => r.Name.ToUpper() == role.ToUpper()));
+            TRole identityRole = Queryable.SingleOrDefault<TRole>(this.Context.Query<TRole>(), (Expression<Func<TRole, bool>>)(r => r.Name.ToUpper() == role.ToUpper()));
             if (identityRole == null)
             {
                 throw new InvalidOperationException(string.Format((IFormatProvider)CultureInfo.CurrentCulture, Resources.RoleNotFound, new object[1] { (object)role }));
@@ -297,7 +320,7 @@ namespace NHibernate.AspNet.Identity
                 throw new ArgumentException(Resources.ValueCannotBeNullOrEmpty, "role");
             }
 
-            IdentityRole identityUserRole = Enumerable.FirstOrDefault<IdentityRole>(Enumerable.Where<IdentityRole>((IEnumerable<IdentityRole>)user.Roles, (Func<IdentityRole, bool>)(r => r.Name.ToUpper() == role.ToUpper())));
+            TRole identityUserRole = Enumerable.FirstOrDefault<TRole>(Enumerable.Where<TRole>((IEnumerable<TRole>)user.Roles, (Func<TRole, bool>)(r => r.Name.ToUpper() == role.ToUpper())));
             if (identityUserRole != null)
             {
                 user.Roles.Remove(identityUserRole);
@@ -614,5 +637,13 @@ namespace NHibernate.AspNet.Identity
                 return query.ToFuture().FirstOrDefault();
             });
         }
+    }
+
+    public class UserStore<TUser> : UserStore<TUser, IdentityRole, string, IdentityUserLogin, IdentityUserClaim>, IUserStore<TUser>
+        where TUser : IdentityUser
+    {
+        public UserStore(ISession context)
+            : base(context)
+        { }
     }
 }

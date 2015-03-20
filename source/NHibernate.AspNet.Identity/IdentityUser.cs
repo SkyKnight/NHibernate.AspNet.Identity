@@ -7,7 +7,10 @@ using NHibernate.Mapping.ByCode.Conformist;
 
 namespace NHibernate.AspNet.Identity
 {
-    public class IdentityUser : EntityWithTypedId<string>, IUser
+    public class IdentityUser<TKey, TLogin, TRole, TClaim> : EntityWithTypedId<TKey>, IUser<TKey>
+        where TLogin : IdentityUserLogin<TKey>
+        where TRole : IdentityRole<TKey>
+        where TClaim : IdentityUserClaim<TKey>
     {
         public virtual int AccessFailedCount { get; set; }
 
@@ -31,17 +34,17 @@ namespace NHibernate.AspNet.Identity
 
         public virtual string SecurityStamp { get; set; }
 
-        public virtual ICollection<IdentityRole> Roles { get; protected set; }
+        public virtual ICollection<TRole> Roles { get; protected set; }
 
-        public virtual ICollection<IdentityUserClaim> Claims { get; protected set; }
+        public virtual ICollection<TClaim> Claims { get; protected set; }
 
-        public virtual ICollection<IdentityUserLogin> Logins { get; protected set; }
+        public virtual ICollection<TLogin> Logins { get; protected set; }
 
         public IdentityUser()
         {
-            this.Roles = new List<IdentityRole>();
-            this.Claims = new List<IdentityUserClaim>();
-            this.Logins = new List<IdentityUserLogin>();
+            this.Roles = new List<TRole>();
+            this.Claims = new List<TClaim>();
+            this.Logins = new List<TLogin>();
         }
 
         public IdentityUser(string userName)
@@ -49,6 +52,17 @@ namespace NHibernate.AspNet.Identity
         {
             this.UserName = userName;
         }
+    }
+
+    public class IdentityUser : IdentityUser<string, IdentityUserLogin, IdentityRole, IdentityUserClaim>, IUser
+    {
+        public IdentityUser()
+            : base()
+        { }
+
+        public IdentityUser(string userName)
+            : base(userName)
+        { }
     }
 
     public class IdentityUserMap : ClassMapping<IdentityUser>
@@ -110,6 +124,7 @@ namespace NHibernate.AspNet.Identity
                          {
                              comp.Property(p => p.LoginProvider);
                              comp.Property(p => p.ProviderKey);
+                             //comp.Property(p => p.UserId);
                          });
                      });
 

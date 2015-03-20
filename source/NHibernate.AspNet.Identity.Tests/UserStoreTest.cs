@@ -340,7 +340,8 @@ namespace NHibernate.AspNet.Identity.Tests
             {
                 userManager.Create(new ApplicationUser() { UserName = "test", Email = "aaa@bbb.com", EmailConfirmed = true }, "Welcome1");
                 var x = userManager.FindByEmail("aaa@bbb.com");
-                roleManager.Create(new IdentityRole("Admin"));
+                var roleCreateResult = roleManager.Create(new IdentityRole("Admin"));
+                Assert.IsTrue(roleCreateResult.Succeeded);
                 userManager.AddClaim(x.Id, new Claim("role", "admin"));
                 userManager.AddClaim(x.Id, new Claim("role", "user"));
                 userManager.AddToRole(x.Id, "Admin");

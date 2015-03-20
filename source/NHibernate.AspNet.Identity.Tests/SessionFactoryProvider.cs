@@ -30,11 +30,15 @@ namespace NHibernate.AspNet.Identity.Tests
                 typeof(SharpArch.Domain.DomainModel.Entity), 
                 typeof(EntityWithTypedId<int>), 
                 typeof(EntityWithTypedId<string>), 
+                typeof(IdentityUser).BaseType,
+                typeof(IdentityRole).BaseType, 
+                typeof(IdentityUserLogin).BaseType, 
+                typeof(IdentityUserClaim).BaseType
             };
 
             var allEntities = new[] { 
                 typeof(IdentityUser), 
-                typeof(ApplicationUser), 
+                typeof(ApplicationUser),
                 typeof(IdentityRole), 
                 typeof(IdentityUserLogin), 
                 typeof(IdentityUserClaim), 
@@ -95,10 +99,12 @@ namespace NHibernate.AspNet.Identity.Tests
         {
             if (baseEntityToIgnore == null) return;
             mapper.IsEntity((type, declared) =>
+                !typeof(ValueObject).IsAssignableFrom(type) &&
                 baseEntityToIgnore.Any(x => x.IsAssignableFrom(type)) &&
                 !baseEntityToIgnore.Any(x => x == type) &&
-                !type.IsInterface);
-            mapper.IsRootEntity((type, declared) => baseEntityToIgnore.Any(x => x == type.BaseType));
+                !type.IsInterface
+                && !type.IsGenericType);
+            mapper.IsRootEntity((type, declared) => !typeof(ValueObject).IsAssignableFrom(type) && baseEntityToIgnore.Any(x => x == type.BaseType));
         }
 
     }

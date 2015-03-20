@@ -4,13 +4,18 @@ using NHibernate.Mapping.ByCode.Conformist;
 
 namespace NHibernate.AspNet.Identity
 {
-    public class IdentityUserClaim : EntityWithTypedId<int>
+    public class IdentityUserClaim<TKey> : EntityWithTypedId<int>
     {
         public virtual string ClaimType { get; set; }
 
         public virtual string ClaimValue { get; set; }
 
-        public virtual IdentityUser User { get; set; }
+        public virtual TKey UserId { get; set; }
+    }
+
+    public class IdentityUserClaim : IdentityUserClaim<string>
+    {
+
     }
 
     public class IdentityUserClaimMap : ClassMapping<IdentityUserClaim>
@@ -22,7 +27,9 @@ namespace NHibernate.AspNet.Identity
             Property(x => x.ClaimType);
             Property(x => x.ClaimValue);
 
-            ManyToOne(x => x.User, m => m.Column("UserId"));
+            Property(x => x.UserId);
+
+            //ManyToOne(x => x.User, m => m.Column("UserId"));
         }
     }
 
